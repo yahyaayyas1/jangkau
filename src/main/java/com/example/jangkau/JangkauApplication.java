@@ -18,8 +18,6 @@ public class JangkauApplication {
 		System.setProperty("POSTGRESQL_USER", dotenv.get("POSTGRESQL_USER"));
 		System.setProperty("POSTGRESQL_PASS", dotenv.get("POSTGRESQL_PASS"));
 
-		String clientId = dotenv.get("CLIENT_ID");
-		String clientSecret = dotenv.get("CLIENT_SECRET");
 
 		SpringApplication.run(JangkauApplication.class, args);
 	}
