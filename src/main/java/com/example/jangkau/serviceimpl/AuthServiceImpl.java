@@ -12,13 +12,6 @@ import com.example.jangkau.repositories.UserRepository;
 import com.example.jangkau.repositories.oauth2.RoleRepository;
 import com.example.jangkau.services.AuthService;
 import com.example.jangkau.services.ValidationService;
-import com.example.jangkau.services.oauth.Oauth2UserDetailService;
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.oauth2.Oauth2;
-import com.google.api.services.oauth2.model.Userinfoplus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -26,18 +19,13 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import javax.servlet.http.HttpServletResponse;
 import java.security.Principal;
 import java.util.*;
 
@@ -80,9 +68,6 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private Config config;
 
-    @Autowired
-    private Oauth2UserDetailService userDetailsService;
-
     public User register(RegisterRequest request) {
         validationService.validate(request);
         String[] roleNames = {"ROLE_USER", "ROLE_READ", "ROLE_WRITE"}; // admin
@@ -95,7 +80,7 @@ public class AuthServiceImpl implements AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exist");
         }
         User user = new User();
-        user.setUsername(request.getUsername().toLowerCase());
+        user.setUsername(request.getUsername());
         user.setEmailAddress(request.getEmailAddress());
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
@@ -107,7 +92,8 @@ public class AuthServiceImpl implements AuthService {
         return userRepository.save(user);
     }
 
-    public LoginResponse login(LoginRequest request) {
+    @Override
+    public LoginResponse login(LoginRequest request, HttpServletResponse response) {
         validationService.validate(request);
         User checkUser = userRepository.findByUsername(request.getUsername());
 
@@ -122,36 +108,23 @@ public class AuthServiceImpl implements AuthService {
         if (!(encoder.matches(request.getPassword(), checkUser.getPassword()))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong password");
         }
+
         String url = baseUrl + "/oauth/token?username=" + checkUser.getUsername() +
                 "&password=" + request.getPassword() +
                 "&grant_type=password" +
                 "&client_id=my-client-web" +
                 "&client_secret=password";
-        ResponseEntity<Map> response = restTemplateBuilder.build().exchange(url, HttpMethod.POST, null, new
+        ResponseEntity<Map> apiResponse = restTemplateBuilder.build().exchange(url, HttpMethod.POST, null, new
                 ParameterizedTypeReference<Map>() {
                 }
         );
 
-        if (response.getStatusCode() == HttpStatus.OK) {
-            User user = userRepository.findByUsername(request.getUsername());
-            List<String> roles = new ArrayList<>();
+        if (apiResponse.getStatusCode() == HttpStatus.OK) {
+            LoginResponse loginResponse = authMapper.toLoginResponse(apiResponse, checkUser);
 
-            for (Role role : user.getRoles()) {
-                roles.add(role.getName());
-            }
-
-            return authMapper.toLoginResponse(response);
+            return loginResponse;
         } else {
-            throw new ResponseStatusException(response.getStatusCode(), "User not found");
-        }
-    }
-
-    @Override
-    public void logout(Principal principal) {
-        if (principal != null) {
-            SecurityContextHolder.clearContext();
-        } else {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User is not logged in");
+            throw new ResponseStatusException(apiResponse.getStatusCode(), "User not found");
         }
     }
 
@@ -164,7 +137,8 @@ public class AuthServiceImpl implements AuthService {
         if (found == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Email Not Found");
         }
-        String template = subject.equalsIgnoreCase("Register") ? emailTemplate.getRegisterTemplate() : emailTemplate.getResetPassword();
+
+        String template = emailTemplate.getResetPassword();
         if (StringUtils.isEmpty(found.getOtp())) {
             User search;
             String otp;
@@ -188,27 +162,6 @@ public class AuthServiceImpl implements AuthService {
         }
         emailSender.sendAsync(found.getEmailAddress(), subject, template);
         return message;
-    }
-
-    @Override
-    public Object confirmOtp(String otp) {
-        User user = userRepository.findByOtp(otp);
-        if (null == user) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "OTP Not Found");
-        }
-        if (user.isEnabled()) {
-            throw new ResponseStatusException(HttpStatus.OK, "Account Already Active, Please login!");
-        }
-        String today = config.convertDateToString(new Date());
-
-        String dateToken = config.convertDateToString(user.getOtpExpiredDate());
-        if (Long.parseLong(today) > Long.parseLong(dateToken)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Your token is expired. Please Get token again.");
-        }
-        user.setEnabled(true);
-        userRepository.save(user);
-
-        return "Success, Please login!";
     }
 
     @Override

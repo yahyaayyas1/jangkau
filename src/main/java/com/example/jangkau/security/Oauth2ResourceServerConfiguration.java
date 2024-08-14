@@ -4,9 +4,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
+
 
 @Configuration
 @EnableResourceServer
@@ -17,28 +19,22 @@ public class Oauth2ResourceServerConfiguration extends ResourceServerConfigurerA
             "/error**",
             "/auth/**",
             "/auth",
+            "/refresh-token",
             "/oauth/authorize**",
             "/api-docs/**",
             "/swagger-ui/**",
             "/api-docs/**",
             "/swagger-resources/**",
-            "/api/**",
-            "/api",
             "/api-contract",
-            "/users/create"
+            "/refresh-token",
+            "/refresh-token/**"
     };
 
-    /**
-     * Manage resource server.
-     */
     @Override
     public void configure(ResourceServerSecurityConfigurer resources) throws Exception {
         super.configure(resources);
     }
 
-    /**
-     * Manage endpoints.
-     */
     @Override
     public void configure(HttpSecurity http) throws Exception {
         http.cors()
@@ -53,7 +49,7 @@ public class Oauth2ResourceServerConfiguration extends ResourceServerConfigurerA
                 .antMatchers(HttpMethod.POST, "/bank-accounts").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                 .antMatchers(HttpMethod.POST, "/saved-accounts").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                 .antMatchers(HttpMethod.GET, "/transactions").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-                .antMatchers(HttpMethod.GET, "/bank-accounts").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                .antMatchers(HttpMethod.GET, "/bank-accounts/user/{userId}").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                 .antMatchers(HttpMethod.GET, "/saved-accounts").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                 .antMatchers(HttpMethod.PUT, "/users").hasAnyAuthority("ROLE_USER")
                 .antMatchers(HttpMethod.GET, "/users/{id}").hasAnyAuthority("ROLE_USER")
@@ -65,8 +61,6 @@ public class Oauth2ResourceServerConfiguration extends ResourceServerConfigurerA
                 .anyRequest()
                 .authenticated()
                 .and()
-                .formLogin()
-                .permitAll();
+                .formLogin().permitAll();
     }
 }
-
