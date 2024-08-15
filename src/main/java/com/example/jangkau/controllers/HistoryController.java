@@ -31,7 +31,7 @@ public class HistoryController {
 
     @Autowired
     UserRepository userRepository;
-    
+
     @Autowired
     private TransactionRepository transactionRepository;
 
