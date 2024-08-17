@@ -11,7 +11,7 @@ public class MerchantMapper {
         return MerchantResponse.builder()
                 .id(merchant.getId().toString())
                 .name(merchant.getName())
-                .accountId(merchant.getAccount().getId().toString())
+                .accountId(merchant.getAccount() != null ? merchant.getAccount().getId().toString() : null)
                 .build();
     }
 }

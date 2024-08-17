@@ -13,6 +13,5 @@ import java.util.UUID;
 public class MerchantRequest {
     @NotBlank(message = "Must not empty")
     private String name;
-//    @NotBlank(message = "Must not empty")
     private UUID accountId;
 }

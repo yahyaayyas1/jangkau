@@ -28,7 +28,7 @@ public class Merchant extends BaseDate {
     @Column(name = "merchant_name")
     private String name;
 
-    @OneToOne(targetEntity = Account.class)
+    @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "account_id", referencedColumnName = "account_id")
     private Account account;
 }
