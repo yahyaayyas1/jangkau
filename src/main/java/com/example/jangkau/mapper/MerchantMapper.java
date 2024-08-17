@@ -10,6 +10,7 @@ public class MerchantMapper {
         return MerchantResponse.builder()
                 .id(merchant.getId().toString())
                 .name(merchant.getName())
+                .accountId(merchant.getAccount().getId().toString())
                 .build();
     }
 }
