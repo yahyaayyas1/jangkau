@@ -16,6 +16,6 @@ WORKDIR /
 # Copy the built JAR file from the previous stage to the container
 COPY .env ./
 COPY --from=build /target/jangkau-0.0.1-SNAPSHOT.jar ./
-EXPOSE 8080
+EXPOSE 8081
 # Set the command to run the application
 CMD ["java", "-jar", "jangkau-0.0.1-SNAPSHOT.jar"]
