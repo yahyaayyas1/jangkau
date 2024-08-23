@@ -24,7 +24,7 @@ public class TransactionMapper {
                 .to(toAccountResponse(transactions.getBeneficiaryAccount()))
                 .amount(transactions.getAmount())
                 .adminFee(transactions.getAdminFee())
-                .transactionDate(transactions.getTransactionDate())  // Pastikan menggunakan transactionDate dari objek Transactions
+                .transactionDate(transactions.getTransactionDate())
                 .note(transactions.getNote())
                 .total(transactions.getAmount() + transactions.getAdminFee())
                 .transactionalType(transactions.getTransactionType())
@@ -35,7 +35,7 @@ public class TransactionMapper {
         TransactionsHistoryDTO response =  TransactionsHistoryDTO.builder()
                 .transactionId(transactions.getTransactionId())
                 .total(transactions.getAmount() + transactions.getAdminFee())
-                .transactionDate(transactions.getTransactionDate())  // Pastikan menggunakan transactionDate dari objek Transactions
+                .transactionDate(transactions.getTransactionDate())
                 .from(toAccountResponse(transactions.getAccountId()))
                 .to(toAccountResponse(transactions.getBeneficiaryAccount()))
                 .amount(transactions.getAmount())
