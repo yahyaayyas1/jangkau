@@ -7,12 +7,16 @@ import com.example.jangkau.models.Account;
 import com.example.jangkau.models.SavedAccounts;
 import com.example.jangkau.models.Transactions;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
 @Component
 public class TransactionMapper {
+
     public TransactionsResponseDTO toTransactionResponse(Transactions transactions) {
         return TransactionsResponseDTO.builder()
                 .transactionId(transactions.getTransactionId())
@@ -29,20 +33,20 @@ public class TransactionMapper {
 
     public TransactionsHistoryDTO toTransactionsHistory(Transactions transactions, UUID accountId){
         TransactionsHistoryDTO response =  TransactionsHistoryDTO.builder()
-            .transactionId(transactions.getTransactionId())
-            .total(transactions.getAmount() + transactions.getAdminFee())
-            .transactionDate(transactions.getTransactionDate())
-            .from(toAccountResponse(transactions.getAccountId()))
-            .to(toAccountResponse(transactions.getBeneficiaryAccount()))
-            .amount(transactions.getAmount())
-            .adminFee(transactions.getAdminFee())
-            .note(transactions.getNote())
-            .transactionalType(transactions.getTransactionType())
-            .build();
-        
-        if (accountId == transactions.getAccountId().getId()) {
+                .transactionId(transactions.getTransactionId())
+                .total(transactions.getAmount() + transactions.getAdminFee())
+                .transactionDate(transactions.getTransactionDate())
+                .from(toAccountResponse(transactions.getAccountId()))
+                .to(toAccountResponse(transactions.getBeneficiaryAccount()))
+                .amount(transactions.getAmount())
+                .adminFee(transactions.getAdminFee())
+                .note(transactions.getNote())
+                .transactionalType(transactions.getTransactionType())
+                .build();
+
+        if (accountId.equals(transactions.getAccountId().getId())) {
             response.setType("Pengeluaran");
-        }else if(accountId == transactions.getBeneficiaryAccount().getId()){
+        } else if(accountId.equals(transactions.getBeneficiaryAccount().getId())){
             response.setType("Pemasukan");
         }
         return response;
@@ -50,12 +54,9 @@ public class TransactionMapper {
 
     public AccountResponse toAccountResponse(Account account){
         return AccountResponse.builder()
-            .accountId(account.getId())
-            .ownerName(account.getOwnerName())
-            .accountNumber(account.getAccountNumber())
-            .build();
-    } 
-
-
-   
+                .accountId(account.getId())
+                .ownerName(account.getOwnerName())
+                .accountNumber(account.getAccountNumber())
+                .build();
+    }
 }
