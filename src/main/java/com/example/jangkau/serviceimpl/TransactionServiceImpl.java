@@ -1,5 +1,6 @@
 package com.example.jangkau.serviceimpl;
 
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.security.Principal;
 import java.time.LocalDate;
@@ -43,7 +44,6 @@ public class TransactionServiceImpl implements TransactionService{
     @Autowired TransactionMapper transactionMapper;
     @Autowired UserRepository userRepository;
     @Autowired AuthService authService;
-    
 
     @Transactional
     @Override
@@ -52,11 +52,10 @@ public class TransactionServiceImpl implements TransactionService{
             User user = authService.getCurrentUser(principal);
 
             Account account = accountRepository.findById(transactionsRequestDTO.getAccountId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account not found"));
-
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account not found"));
 
             Account beneficiaryAccount = accountRepository.findById(transactionsRequestDTO.getBeneficiaryAccount())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Beneficiary account not found"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Beneficiary account not found"));
 
             if (account.getUser().getId() != user.getId()) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
@@ -65,30 +64,35 @@ public class TransactionServiceImpl implements TransactionService{
             if (account.getId() == beneficiaryAccount.getId()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot make transactions to the same bank account");
             }
-            
+
             if (account.getBalance() < transactionsRequestDTO.getAmount()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient balance");
-            }else if (transactionsRequestDTO.getAmount() <= 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Must be greater than 0");
+            } else if (transactionsRequestDTO.getAmount() <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be greater than 0");
             }
+
+            
             Transactions newTransaction = Transactions.builder()
-                .accountId(account)
-                .beneficiaryAccount(beneficiaryAccount)
-                .amount(transactionsRequestDTO.getAmount())
-                .transactionDate(transactionsRequestDTO.getTransactionDate())
-                .note(transactionsRequestDTO.getNote())
-                .isSaved(transactionsRequestDTO.isSaved())
-                .transactionType("TRANSFER")
-                .build();
+                    .accountId(account)
+                    .beneficiaryAccount(beneficiaryAccount)
+                    .amount(transactionsRequestDTO.getAmount())
+                    .transactionDate(new Date())
+                    .note(transactionsRequestDTO.getNote())
+                    .isSaved(transactionsRequestDTO.isSaved())
+                    .transactionType("TRANSFER")
+                    .build();
+
+            System.out.println("Transaction Date: " + newTransaction.getTransactionDate());
             transactionRepository.save(newTransaction);
-            newTransaction.setTransactionId(newTransaction.getTransactionId());
+
             return transactionMapper.toTransactionResponse(newTransaction);
         } catch (ResponseStatusException e) {
-            throw e; 
+            throw e;
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", e);
         }
     }
+
 
     @Override
     public Transactions getTransaction(String transaction_id) {
@@ -99,11 +103,16 @@ public class TransactionServiceImpl implements TransactionService{
     }
 
     @Override
-    public List<TransactionsHistoryDTO> getTransactionByDate(String userId, DateFilterRequestDTO requestDTO) {
+    public List<TransactionsHistoryDTO> getTransactionByDate(String userId, DateFilterRequestDTO requestDTO, Principal principal) {
         try {
             UUID uuid = UUID.fromString(userId);
+            User currentUser = authService.getCurrentUser(principal);
             User user = userRepository.findById(uuid)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "User not found"));
+                    
+            if (user.getId() != currentUser.getId()) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+            }
 
             Account account = accountRepository.findByUser(user)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account not found"));
@@ -114,13 +123,7 @@ public class TransactionServiceImpl implements TransactionService{
             } else if (requestDTO.getStartDate().equals(requestDTO.getEndDate())) {
                 transactions = transactionRepository.findNowTransactions(account.getId(), requestDTO.getStartDate());
             } else {
-                Date endDate = requestDTO.getEndDate();
-                LocalDate localEndDate = endDate.toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate();
-                localEndDate = localEndDate.plusDays(1);
-                endDate = Date.from(localEndDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
-                transactions = transactionRepository.findAllTransactionsByDate(account.getId(), requestDTO.getStartDate(), endDate);
+                transactions = transactionRepository.findAllTransactionsByDate(account.getId(), requestDTO.getStartDate(), requestDTO.getEndDate());
             }
             List<TransactionsHistoryDTO> histories = transactions
                     .stream()
